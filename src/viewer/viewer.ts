@@ -902,21 +902,37 @@ export default class Viewer {
   }
 
   animate () {
+    let animate = this.animations > 0
     this.signals.ticked.dispatch(this.stats)
-    const delta = window.performance.now() - this.stats.startTime
 
-    if (delta > 500 && !this.isStill && this.sampleLevel < 3 && this.sampleLevel !== -1) {
-      const currentSampleLevel = this.sampleLevel
-      this.sampleLevel = 3
-      this.renderPending = true
-      this.render()
-      this.isStill = true
-      this.sampleLevel = currentSampleLevel
-      if (Debug) Log.log('rendered still frame')
+    if (!this.isStill && this.sampleLevel < 3 && this.sampleLevel !== -1) {
+      const delta = window.performance.now() - this.stats.startTime
+      if (delta > 500) {
+        const currentSampleLevel = this.sampleLevel
+        this.sampleLevel = 3
+        this.renderPending = true
+        this.render()
+        this.isStill = true
+        this.sampleLevel = currentSampleLevel
+        if (Debug) Log.log('rendered still frame')
+      } else {
+        animate = true
+      }
     }
+    if (animate) {
+      window.requestAnimationFrame(this.animate)
+    } else {
+      this._animating = false
+    }
+  }
 
+  _initAnimate() {
+    if (this._animating) return
     window.requestAnimationFrame(this.animate)
   }
+
+  _animating = false
+  animations = 0
 
   pick (x: number, y: number) {
     if (this.parameters.cameraType === 'stereo') {

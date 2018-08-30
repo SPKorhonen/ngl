@@ -202,23 +202,46 @@ class MouseObserver {
    * @return {undefined}
    */
   _listen () {
-    const now = window.performance.now()
-    const cp = this.canvasPosition
-    if (this.doubleClickPending && now - this.lastClicked > this.doubleClickSpeed) {
-      this.doubleClickPending = false
+    let listen = false
+    //handle doubleclick and moving
+    if (this.doubleClickPending || this.moving) {
+      const now = window.performance.now()
+      if (this.doubleClickPending) {
+        this.doubleClickPending = now - this.lastClicked < this.doubleClickSpeed
+        listen = listen || this.doubleClickPending
+      }
+      if (this.moving) {
+        this.moving = now - this.lastMoved > this.hoverTimeout
+        listen = listen || this.moving
+      }    
     }
-    if (now - this.lastMoved > this.hoverTimeout) {
-      this.moving = false
-    }
+    //scrolled
     if (this.scrolled || (!this.moving && !this.hovering)) {
       this.scrolled = false
       if (this.hoverTimeout !== -1 && this.overElement) {
         this.hovering = true
+        const cp = this.canvasPosition
         this.signals.hovered.dispatch(cp.x, cp.y)
       }
     }
+    //re-queue _listen
+    if (listen) {
+        window.requestAnimationFrame(this._listen)
+    } else {
+      this._listening = false;
+    }
+  }
+
+  /**
+   * begin listen cycle
+   * @return {undefined}
+   */
+  _initListen() {
+    if (this._listening) return
     window.requestAnimationFrame(this._listen)
   }
+
+  _listening = false;
 
   /**
    * handle mouse scroll
@@ -248,6 +271,7 @@ class MouseObserver {
 
     setTimeout(() => {
       this.scrolled = true
+      this._initListen()
     }, this.hoverTimeout)
   }
 
@@ -272,6 +296,7 @@ class MouseObserver {
     this.prevPosition.copy(this.position)
     this.position.set(event.clientX, event.clientY)
     this._setCanvasPosition(event)
+    this._initListen()
     const dx = this.prevPosition.x - this.position.x
     const dy = this.prevPosition.y - this.position.y
     this.signals.moved.dispatch(dx, dy)
@@ -317,6 +342,7 @@ class MouseObserver {
       }
       this.signals.clicked.dispatch(cp.x, cp.y)
       this.doubleClickPending = true
+      this._initListen()
       this.prevClickCP.copy(cp)
     }
     this.which = undefined
@@ -399,6 +425,7 @@ class MouseObserver {
           event.touches[ 0 ].pageY
         )
         this._setCanvasPosition(event.touches[ 0 ])
+        this._initListen();
         const dx = this.prevPosition.x - this.position.x
         const dy = this.prevPosition.y - this.position.y
         this.signals.moved.dispatch(dx, dy)

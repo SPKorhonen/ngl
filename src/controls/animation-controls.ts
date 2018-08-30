@@ -52,6 +52,8 @@ class AnimationControls {
       animation.tick(this.viewer.stats)
     } else {
       this.animationList.push(animation)
+      this.viewer.animations++
+      this.viewer._initAnimate()
     }
 
     return animation
@@ -66,6 +68,7 @@ class AnimationControls {
 
     if (index > -1) {
       list.splice(index, 1)
+      this.viewer.animations--
     }
   }
 
