@@ -143,6 +143,8 @@ class MouseObserver {
   overElement: boolean
   lastTouchDistance: number
 
+  private listening = false;
+
   /**
    * @param  {Element} domElement - the dom element to observe mouse events in
    * @param  {Object} params - parameters object
@@ -203,19 +205,21 @@ class MouseObserver {
    */
   _listen () {
     let listen = false
-    //handle doubleclick and moving
+    // Handle doubleclick and moving
     if (this.doubleClickPending || this.moving) {
       const now = window.performance.now()
       if (this.doubleClickPending) {
         this.doubleClickPending = now - this.lastClicked < this.doubleClickSpeed
         listen = listen || this.doubleClickPending
+        console.log('_listen: doubleClickPending= ' + this.doubleClickPending)
       }
       if (this.moving) {
         this.moving = now - this.lastMoved > this.hoverTimeout
         listen = listen || this.moving
-      }    
+        console.log('_listen: moving= ' + this.moving)
+      }
     }
-    //scrolled
+    // Scrolled
     if (this.scrolled || (!this.moving && !this.hovering)) {
       this.scrolled = false
       if (this.hoverTimeout !== -1 && this.overElement) {
@@ -224,24 +228,23 @@ class MouseObserver {
         this.signals.hovered.dispatch(cp.x, cp.y)
       }
     }
-    //re-queue _listen
+    // Re-queue _listen
     if (listen) {
         window.requestAnimationFrame(this._listen)
     } else {
-      this._listening = false;
+      this.listening = false;
     }
   }
 
   /**
-   * begin listen cycle
+   * init listen pump
    * @return {undefined}
    */
   _initListen() {
-    if (this._listening) return
+    if (this.listening) return
+    this.listening = true
     window.requestAnimationFrame(this._listen)
   }
-
-  _listening = false;
 
   /**
    * handle mouse scroll
@@ -288,6 +291,9 @@ class MouseObserver {
       this.overElement = true
     } else {
       this.overElement = false
+      this.moving = false
+      this.hovering = false
+      if (!this.pressed) return
     }
     this._setKeys(event)
     this.moving = true
@@ -410,6 +416,9 @@ class MouseObserver {
       this.overElement = true
     } else {
       this.overElement = false
+      this.moving = false
+      this.hovering = false
+      if (!this.pressed) return
     }
     switch (event.touches.length) {
       case 1: {

@@ -30,6 +30,7 @@ abstract class Animation {
   private _paused = false
   private _resolveList: Function[] = []
   private _hold: boolean
+  private _activated = false
 
   constructor (duration: number|undefined, controls: ViewerControls, ...args: any[]) {
     this.duration = defaults(duration, 1000)
@@ -38,6 +39,8 @@ abstract class Animation {
     this.startTime = window.performance.now()
 
     this._init(...args)
+
+    this._activate()
   }
 
   /**
@@ -55,6 +58,32 @@ abstract class Animation {
   }
 
   /**
+   * True when animation is active
+   */
+  get activated() {
+    return this._activated
+  }
+
+  /**
+   * activates animation in view
+   */
+  _activate() {
+    if (this._activated) return
+    if (this.paused || this.done) return
+    this.controls.viewer._activateAnimation()
+    this._activated = true
+  }
+
+  /**
+   * Deactivates animation
+   */
+  _deactivate() {
+    if (!this._activated) return
+    this.controls.viewer._deactivateAnimation()
+    this._activated = false
+  }
+
+  /**
    * init animation
    */
   abstract _init (...args: any[]): void
@@ -65,7 +94,7 @@ abstract class Animation {
   abstract _tick (stats?: Stats): void
 
   tick (stats: Stats) {
-    if (this._paused) return
+    if (this._paused) return false
 
     this.elapsedDuration = stats.currentTime - this.startTime - this.pausedDuration
 
@@ -79,9 +108,11 @@ abstract class Animation {
 
     if (this.done) {
       this._resolveList.forEach(resolve => resolve())
+      this._deactivate()
+      return true
     }
 
-    return this.done
+    return false
   }
 
   /**
@@ -91,11 +122,11 @@ abstract class Animation {
    */
   pause (hold?: boolean) {
     if (hold) this._hold = true
+    if (this._paused) return
 
-    if (this.pausedTime === -1) {
-      this.pausedTime = window.performance.now()
-    }
+    this.pausedTime = window.performance.now()
     this._paused = true
+    this._deactivate()
   }
 
   /**
@@ -104,11 +135,13 @@ abstract class Animation {
    */
   resume (releaseHold?: boolean) {
     if (!releaseHold && this._hold) return
+    if (!this._paused) return
 
     this.pausedDuration += window.performance.now() - this.pausedTime
     this._paused = false
     this._hold = false
     this.pausedTime = -1
+    this._activate()
   }
 
   /**

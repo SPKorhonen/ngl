@@ -232,6 +232,9 @@ export default class Viewer {
 
   private distVector = new Vector3()
 
+  private animating = false
+  private animations = 0
+
   constructor (idOrElement: string|HTMLElement) {
     this.signals = {
       ticked: new Signal(),
@@ -242,7 +245,7 @@ export default class Viewer {
       const elm = document.getElementById(idOrElement)
       if (elm === null) {
         this.container = document.createElement('div')
-      }else {
+      } else {
         this.container = elm
       }
     } else if (idOrElement instanceof HTMLElement) {
@@ -333,7 +336,7 @@ export default class Viewer {
     const cameraType = this.parameters.cameraType
     if (cameraType === 'orthographic') {
       this.camera = this.orthographicCamera
-    } else if(cameraType === 'perspective' || cameraType === 'stereo') {
+    } else if (cameraType === 'perspective' || cameraType === 'stereo') {
       this.camera = this.perspectiveCamera
     } else {
       throw new Error(`Unknown cameraType '${cameraType}'`)
@@ -905,34 +908,52 @@ export default class Viewer {
     let animate = this.animations > 0
     this.signals.ticked.dispatch(this.stats)
 
-    if (!this.isStill && this.sampleLevel < 3 && this.sampleLevel !== -1) {
+    if (!this.isStill) {
       const delta = window.performance.now() - this.stats.startTime
       if (delta > 500) {
-        const currentSampleLevel = this.sampleLevel
-        this.sampleLevel = 3
-        this.renderPending = true
-        this.render()
         this.isStill = true
-        this.sampleLevel = currentSampleLevel
-        if (Debug) Log.log('rendered still frame')
+        if (this.sampleLevel < 3 && this.sampleLevel !== -1) {
+          const currentSampleLevel = this.sampleLevel
+          this.sampleLevel = 3
+          this.renderPending = true
+          this.render()
+          this.sampleLevel = currentSampleLevel
+          if (Debug) Log.log('rendered still frame')
+        }
       } else {
         animate = true
       }
     }
+    // Re-queue animate
     if (animate) {
       window.requestAnimationFrame(this.animate)
     } else {
-      this._animating = false
+      this.animating = false
     }
   }
 
-  _initAnimate() {
-    if (this._animating) return
+  protected _initAnimate() {
+    if (this.animating) return
+    this.animating = true
     window.requestAnimationFrame(this.animate)
   }
 
-  _animating = false
-  animations = 0
+  /**
+   * activate animation on view
+   */
+  _activateAnimation() {
+    console.log('_activateAnimation: ' + this.animations + ' ' + this.animating)
+    this.animations++;
+    this._initAnimate()
+  }
+
+  /**
+   * deactivate animation on view
+   */
+  _deactivateAnimation() {
+    console.log('_activateAnimation: ' + this.animations + ' ' + this.animating)
+    this.animations--;
+  }
 
   pick (x: number, y: number) {
     if (this.parameters.cameraType === 'stereo') {
@@ -1002,6 +1023,7 @@ export default class Viewer {
     if (window.performance.now() - this.stats.startTime > 22) {
       this.stats.begin()
       this.isStill = false
+      this._initAnimate()
     }
 
     this.renderPending = true

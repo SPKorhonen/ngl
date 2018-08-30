@@ -48,12 +48,11 @@ class AnimationControls {
    * Add an animation
    */
   add (animation: Animation) {
+    animation._activate()
     if (animation.duration === 0) {
       animation.tick(this.viewer.stats)
     } else {
       this.animationList.push(animation)
-      this.viewer.animations++
-      this.viewer._initAnimate()
     }
 
     return animation
@@ -63,12 +62,12 @@ class AnimationControls {
    * Remove an animation
    */
   remove (animation: Animation) {
+    animation._deactivate()
     const list = this.animationList
     const index = list.indexOf(animation)
 
     if (index > -1) {
       list.splice(index, 1)
-      this.viewer.animations--
     }
   }
 
