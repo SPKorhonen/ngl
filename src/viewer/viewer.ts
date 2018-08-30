@@ -241,6 +241,8 @@ export default class Viewer {
       rendered: new Signal()
     }
 
+    this.animate = this.animate.bind(this)
+
     if (typeof idOrElement === 'string') {
       const elm = document.getElementById(idOrElement)
       if (elm === null) {
@@ -283,8 +285,6 @@ export default class Viewer {
     // fog & background
     this.setBackground()
     this.setFog()
-
-    this.animate = this.animate.bind(this)
   }
 
   private _initParams () {
